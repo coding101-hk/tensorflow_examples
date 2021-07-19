@@ -24,6 +24,7 @@ import io
 import time
 import numpy as np
 import picamera
+import cv2
 
 from PIL import Image
 from tflite_runtime.interpreter import Interpreter
@@ -72,7 +73,7 @@ def main():
   _, height, width, _ = interpreter.get_input_details()[0]['shape']
 
   with picamera.PiCamera(resolution=(640, 480), framerate=30) as camera:
-    camera.start_preview()
+    #camera.start_preview()
     try:
       stream = io.BytesIO()
       for _ in camera.capture_continuous(
@@ -80,16 +81,24 @@ def main():
         stream.seek(0)
         image = Image.open(stream).convert('RGB').resize((width, height),
                                                          Image.ANTIALIAS)
+        opencv_image = np.array(image)
+        opencv_image = opencv_image[:, :, ::-1].copy()
         start_time = time.time()
         results = classify_image(interpreter, image)
         elapsed_ms = (time.time() - start_time) * 1000
         label_id, prob = results[0]
         stream.seek(0)
         stream.truncate()
-        camera.annotate_text = '%s %.2f\n%.1fms' % (labels[label_id], prob,
-                                                    elapsed_ms)
+        annotate_text = '%s %.2f' % (labels[label_id], prob)
+        # camera.annotate_text = annotate_text
+        print(annotate_text)
+        opencv_image = cv2.resize(opencv_image, (600, 600))
+        cv2.putText(opencv_image, annotate_text, (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2, cv2.LINE_AA)
+        cv2.imshow("My Display", opencv_image)
+        cv2.waitKey(1)
     finally:
-      camera.stop_preview()
+      #camera.stop_preview()
+      cv2.destroyWindow()
 
 
 if __name__ == '__main__':
