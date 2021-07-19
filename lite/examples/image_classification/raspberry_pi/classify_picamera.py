@@ -76,8 +76,7 @@ def main():
     #camera.start_preview()
     try:
       stream = io.BytesIO()
-      for _ in camera.capture_continuous(
-          stream, format='jpeg', use_video_port=True):
+      for _ in camera.capture_continuous(stream, format='jpeg', use_video_port=True):
         stream.seek(0)
         image = Image.open(stream).convert('RGB').resize((width, height),
                                                          Image.ANTIALIAS)
@@ -92,7 +91,7 @@ def main():
         annotate_text = '%s %.2f' % (labels[label_id], prob)
         # camera.annotate_text = annotate_text
         print(annotate_text)
-        opencv_image = cv2.resize(opencv_image, (600, 600))
+        opencv_image = cv2.resize(opencv_image, (640, 480))
         cv2.putText(opencv_image, annotate_text, (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2, cv2.LINE_AA)
         cv2.imshow("My Display", opencv_image)
         cv2.waitKey(1)

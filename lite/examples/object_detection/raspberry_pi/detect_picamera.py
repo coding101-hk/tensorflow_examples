@@ -23,6 +23,7 @@ import argparse
 import io
 import re
 import time
+import cv2
 
 from annotation import Annotator
 
@@ -87,7 +88,7 @@ def detect_objects(interpreter, image, threshold):
   return results
 
 
-def annotate_objects(annotator, results, labels):
+def annotate_objects(opencv_image, results, labels):
   """Draws the bounding box and label for each object in the results."""
   for obj in results:
     # Convert the bounding box figures from relative coordinates
@@ -99,10 +100,12 @@ def annotate_objects(annotator, results, labels):
     ymax = int(ymax * CAMERA_HEIGHT)
 
     # Overlay the box, label, and score on the camera preview
-    annotator.bounding_box([xmin, ymin, xmax, ymax])
-    annotator.text([xmin, ymin],
-                   '%s\n%.2f' % (labels[obj['class_id']], obj['score']))
-
+    #annotator.bounding_box([xmin, ymin, xmax, ymax])
+    #annotator.text([xmin, ymin],
+    #               '%s\n%.2f' % (labels[obj['class_id']], obj['score']))
+    cv2.rectangle(opencv_image, (xmin, ymin), (xmax, ymax), (10, 255, 0), 2)
+    annotate_text = '%s %.2f' % (labels[obj['class_id']], obj['score'])
+    cv2.putText(opencv_image, annotate_text, (xmin, ymin), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 0, 0), 2, cv2.LINE_AA)
 
 def main():
   parser = argparse.ArgumentParser(
@@ -126,7 +129,7 @@ def main():
 
   with picamera.PiCamera(
       resolution=(CAMERA_WIDTH, CAMERA_HEIGHT), framerate=30) as camera:
-    camera.start_preview()
+    #camera.start_preview()
     try:
       stream = io.BytesIO()
       annotator = Annotator(camera)
@@ -135,20 +138,26 @@ def main():
         stream.seek(0)
         image = Image.open(stream).convert('RGB').resize(
             (input_width, input_height), Image.ANTIALIAS)
+        opencv_image = np.array(image)
+        opencv_image = opencv_image[:, :, ::-1].copy()
+        opencv_image = cv2.resize(opencv_image, (640, 480))
         start_time = time.monotonic()
         results = detect_objects(interpreter, image, args.threshold)
         elapsed_ms = (time.monotonic() - start_time) * 1000
 
-        annotator.clear()
-        annotate_objects(annotator, results, labels)
-        annotator.text([5, 0], '%.1fms' % (elapsed_ms))
-        annotator.update()
+        #annotator.clear()
+        #annotate_objects(annotator, results, labels)
+        annotate_objects(opencv_image, results, labels)
+        #annotator.text([5, 0], '%.1fms' % (elapsed_ms))
+        #annotator.update()
 
         stream.seek(0)
         stream.truncate()
-
+        cv2.imshow("My Display", opencv_image)
+        cv2.waitKey(1)
     finally:
-      camera.stop_preview()
+      #camera.stop_preview()
+      cv2.destroyWindow()
 
 
 if __name__ == '__main__':
